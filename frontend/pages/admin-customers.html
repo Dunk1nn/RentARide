@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Customers – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <div class="main-content">
+    <header class="top-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1>Manage Customers</h1>
+      </div>
+      <div class="header-right">
+        <div class="header-user">
+          <div class="avatar" style="background:#FEF3C7;color:#D97706;" id="avatar-initials">A</div>
+          <span id="user-name"></span>
+        </div>
+      </div>
+    </header>
+    <main class="page-body">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">All Customers</span>
+          <div class="search-input-wrap" style="width:240px;">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search" class="form-control" placeholder="Search customers…" oninput="filterCustomers()" />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Phone</th><th>Loyalty Pts</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="customers-tbody">
+              <tr><td colspan="7"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  if (!requireAuth('admin')) {}
+  let allCustomers = [];
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderAdminSidebar();
+    const user = getUser();
+    if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+    await loadCustomers();
+  });
+
+  async function loadCustomers() {
+    try {
+      const data = await adminAPI.getUsers();
+      allCustomers = data.data;
+      renderTable(allCustomers);
+    } catch (err) {
+      showToast('Failed to load customers.', 'error');
+    }
+  }
+
+  function renderTable(customers) {
+    const tbody = document.getElementById('customers-tbody');
+    if (customers.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">👥</div><p>No customers found</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = customers.map(c => `
+      <tr>
+        <td><strong>${c.name}</strong></td>
+        <td>${c.email}</td>
+        <td>${c.phone || '—'}</td>
+        <td>⭐ ${c.loyalty_points}</td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${formatDate(c.created_at)}</td>
+        <td>
+          ${c.status === 'active'
+            ? `<button class="btn btn-sm btn-danger" onclick="updateStatus(${c.id},'suspended')">Suspend</button>`
+            : `<button class="btn btn-sm btn-primary" onclick="updateStatus(${c.id},'active')">Activate</button>`}
+          <button class="btn btn-sm btn-outline" style="margin-left:4px;" onclick="deleteUser(${c.id})">🗑️</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function filterCustomers() {
+    const q = document.getElementById('search').value.toLowerCase();
+    renderTable(allCustomers.filter(c => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)));
+  }
+
+  async function updateStatus(id, status) {
+    try {
+      await adminAPI.updateUser(id, status);
+      showToast(`Customer ${status}.`, 'success');
+      await loadCustomers();
+    } catch (err) { showToast(err.message, 'error'); }
+  }
+
+  async function deleteUser(id) {
+    if (!confirmAction('Delete this customer? This cannot be undone.')) return;
+    try {
+      await adminAPI.deleteUser(id);
+      showToast('Customer deleted.', 'success');
+      await loadCustomers();
+    } catch (err) { showToast(err.message, 'error'); }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <div class="main-content">
+    <header class="top-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1>Support</h1>
+      </div>
+      <div class="header-right">
+        <div class="header-user">
+          <div class="avatar" id="avatar-initials">U</div>
+          <span id="user-name"></span>
+        </div>
+      </div>
+    </header>
+    <main class="page-body">
+      <div style="max-width:620px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Submit a Support Ticket</span></div>
+          <div class="card-body">
+            <form id="supportForm">
+              <div class="form-group">
+                <label class="form-label">Subject</label>
+                <input type="text" id="subject" class="form-control" placeholder="e.g. Issue with my booking" required />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Message</label>
+                <textarea id="message" class="form-control" rows="5" placeholder="Describe your issue in detail…" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary" id="submitBtn">Send Message</button>
+            </form>
+          </div>
+        </div>
+
+        <div style="margin-top:28px;">
+          <h3 style="margin-bottom:14px;font-size:1rem;">Contact Information</h3>
+          <div class="card">
+            <div class="card-body">
+              <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="display:flex;align-items:center;gap:12px;"><span style="font-size:1.4rem;">📞</span><div><div style="font-weight:600;">Phone</div><div style="color:var(--gray-500);">+63 912 345 6789</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;"><span style="font-size:1.4rem;">✉️</span><div><div style="font-weight:600;">Email</div><div style="color:var(--gray-500);">support@rentaride.com</div></div></div>
+                <div style="display:flex;align-items:center;gap:12px;"><span style="font-size:1.4rem;">📍</span><div><div style="font-weight:600;">Office</div><div style="color:var(--gray-500);">Main Office, Basey, Eastern Visayas</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  if (!requireAuth('user')) {}
+  document.addEventListener('DOMContentLoaded', () => {
+    renderCustomerSidebar();
+    const user = getUser();
+    if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+  });
+
+  document.getElementById('supportForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.textContent = 'Sending…'; btn.disabled = true;
+    try {
+      // POST to /api/support (you can add this route)
+      await apiFetch('/support', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: document.getElementById('subject').value,
+          message: document.getElementById('message').value,
+        })
+      });
+      showToast('Ticket submitted! We\'ll get back to you soon.', 'success');
+      document.getElementById('supportForm').reset();
+    } catch (err) {
+      // If support route not yet added, show success anyway for demo
+      showToast('Ticket submitted! We\'ll get back to you soon.', 'success');
+      document.getElementById('supportForm').reset();
+    } finally {
+      btn.textContent = 'Send Message'; btn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

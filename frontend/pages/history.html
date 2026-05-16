@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <div class="main-content">
+    <header class="top-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1>Rental History</h1>
+      </div>
+      <div class="header-right">
+        <div class="header-user">
+          <div class="avatar" id="avatar-initials">U</div>
+          <span id="user-name"></span>
+        </div>
+      </div>
+    </header>
+    <main class="page-body">
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Vehicle</th><th>Date</th><th>Duration</th><th>Total</th><th>Status</th></tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="5"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  if (!requireAuth('user')) {}
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderCustomerSidebar();
+    const user = getUser();
+    if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+
+    try {
+      const data = await rentalsAPI.getMy();
+      const completed = data.data.filter(r => ['completed','cancelled','rejected'].includes(r.status));
+      const tbody = document.getElementById('history-tbody');
+      if (completed.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🕐</div><p>No completed rentals yet</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = completed.map(r => `
+        <tr>
+          <td><strong>${r.make} ${r.model}</strong><br><small style="color:var(--gray-400)">${r.category}</small></td>
+          <td>${formatDate(r.pickup_date)}</td>
+          <td>${r.total_days} day${r.total_days>1?'s':''}</td>
+          <td>${formatCurrency(r.total_amount)}</td>
+          <td>${statusBadge(r.status)}</td>
+        </tr>`).join('');
+    } catch (err) { showToast('Failed to load history.', 'error'); }
+  });
+</script>
+</body>
+</html>

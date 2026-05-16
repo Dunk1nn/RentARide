@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Rentals – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar()">☰</button>
+          <h1>My Rentals</h1>
+        </div>
+        <div class="header-right">
+          <div class="header-user">
+            <div class="avatar" id="avatar-initials">U</div>
+            <span id="user-name"></span>
+          </div>
+        </div>
+      </header>
+      <main class="page-body">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+          <button class="btn btn-primary btn-sm" onclick="filterStatus('all', this)">All</button>
+          <button class="btn btn-outline btn-sm" onclick="filterStatus('pending', this)">Pending</button>
+          <button class="btn btn-outline btn-sm" onclick="filterStatus('approved', this)">Approved</button>
+          <button class="btn btn-outline btn-sm" onclick="filterStatus('ongoing', this)">Ongoing</button>
+          <button class="btn btn-outline btn-sm" onclick="filterStatus('completed', this)">Completed</button>
+          <button class="btn btn-outline btn-sm" onclick="filterStatus('cancelled', this)">Cancelled</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Vehicle</th>
+                  <th>Pickup</th>
+                  <th>Return</th>
+                  <th>Days</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="rentals-tbody">
+                <tr>
+                  <td colspan="7">
+                    <div class="spinner"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (!requireAuth('user')) { }
+    let allRentals = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderCustomerSidebar();
+      const user = getUser();
+      if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+      await loadRentals();
+    });
+
+    async function loadRentals() {
+      try {
+        const data = await rentalsAPI.getMy();
+        allRentals = data.data;
+        renderTable(allRentals);
+      } catch (err) {
+        showToast('Failed to load rentals.', 'error');
+      }
+    }
+
+    function renderTable(rentals) {
+      const tbody = document.getElementById('rentals-tbody');
+      if (rentals.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7">
+        <div class="empty-state"><div class="empty-icon">📋</div>
+        <p>No rentals found. <a href="browse-cars.html" style="color:var(--primary);">Book a car</a></p>
+        </div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = rentals.map(r => {
+        let action = '—';
+        if (r.status === 'pending') {
+          action = `<button class="btn btn-sm btn-danger" onclick="cancelRental(${r.id})">Cancel</button>`;
+        } else if (r.status === 'approved' && !+r.is_paid) {
+          action = `<a href="payment-form.html?rental_id=${r.id}" class="btn btn-sm btn-primary">💳 Pay Now</a>`;
+        } else if (r.status === 'approved' && +r.is_paid) {
+          action = `<span class="badge badge-success">Paid ✓</span>`;
+        }
+
+        return `<tr>
+        <td>
+          <strong>${r.make} ${r.model}</strong>
+          <br><small style="color:var(--gray-400)">${r.category}</small>
+        </td>
+        <td>${formatDate(r.pickup_date)}</td>
+        <td>${formatDate(r.return_date)}</td>
+        <td>${r.total_days}</td>
+        <td>${formatCurrency(r.total_amount)}</td>
+        <td>${statusBadge(r.status)}</td>
+        <td>${action}</td>
+      </tr>`;
+      }).join('');
+    }
+
+    function filterStatus(status, btn) {
+      document.querySelectorAll('.page-body > div button.btn').forEach(b => {
+        b.classList.remove('btn-primary'); b.classList.add('btn-outline');
+      });
+      btn.classList.remove('btn-outline'); btn.classList.add('btn-primary');
+      renderTable(status === 'all' ? allRentals : allRentals.filter(r => r.status === status));
+    }
+
+    async function cancelRental(id) {
+      if (!confirmAction('Are you sure you want to cancel this booking?')) return;
+      try {
+        await rentalsAPI.cancel(id);
+        showToast('Rental cancelled.', 'success');
+        await loadRentals();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  </script>
+</body>
+
+</html>

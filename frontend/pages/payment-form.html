@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Complete Payment – Rent A Ride</title>
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+        .pay-layout {
+            max-width: 960px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+        }
+
+        .points-slider {
+            width: 100%;
+            accent-color: var(--primary);
+            margin: 8px 0;
+        }
+
+        .amount-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: .92rem;
+        }
+
+        .amount-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .amount-row.discount {
+            color: var(--success);
+        }
+
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .method-btn {
+            border: 2px solid var(--gray-200);
+            border-radius: var(--radius-sm);
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .2s;
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--gray-600);
+            background: var(--white);
+        }
+
+        .method-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .method-btn.selected {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .method-btn .method-icon {
+            font-size: 1.4rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .points-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #FEF3C7;
+            color: #B45309;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        .success-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .5);
+            z-index: 300;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success-overlay.show {
+            display: flex;
+        }
+
+        .success-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            animation: popIn .4s ease;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(.85);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 12px;
+        }
+
+        .receipt-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: .88rem;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        @media (max-width: 700px) {
+            .pay-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .method-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-layout">
+        <div id="sidebar-container"></div>
+        <div class="main-content">
+            <header class="top-header">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <button class="hamburger" onclick="toggleSidebar()">☰</button>
+                    <div>
+                        <h1>Complete Payment</h1>
+                        <div style="font-size:.78rem;color:var(--gray-500);">Finalize your booking</div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="header-user">
+                        <div class="avatar" id="avatar-initials">U</div>
+                        <span id="user-name"></span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="page-body">
+                <!-- Loading state -->
+                <div id="loading-state" style="text-align:center;padding:60px 0;">
+                    <div class="spinner"></div>
+                    <p style="color:var(--gray-500);margin-top:12px;">Loading booking details…</p>
+                </div>
+
+                <!-- Already paid state -->
+                <div id="already-paid-state" style="display:none;text-align:center;padding:60px 20px;">
+                    <div style="font-size:3rem;margin-bottom:16px;">✅</div>
+                    <h2 style="margin-bottom:8px;">Already Paid</h2>
+                    <p style="color:var(--gray-500);margin-bottom:20px;">This booking has already been paid
+                        successfully.</p>
+                    <a href="payments.html" class="btn btn-primary">View Payments</a>
+                </div>
+
+                <!-- Main payment layout -->
+                <div id="payment-layout" class="pay-layout" style="display:none;">
+
+                    <!-- LEFT: Payment Form ───────────────────────── -->
+                    <div>
+                        <!-- Loyalty Points Section -->
+                        <div class="card" style="margin-bottom:20px;">
+                            <div class="card-header">
+                                <span class="card-title">⭐ Loyalty Points</span>
+                                <span class="points-badge">
+                                    <span>⭐</span>
+                                    <span id="points-balance">0</span> pts available
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div id="no-points-msg" style="color:var(--gray-500);font-size:.88rem;display:none;">
+                                    You don't have any loyalty points yet. You'll earn points after this payment!
+                                </div>
+                                <div id="points-section">
+                                    <div
+                                        style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                        <label class="form-label" style="margin:0;">Points to redeem</label>
+                                        <strong id="points-display" style="color:var(--primary);">0 pts = $0.00
+                                            off</strong>
+                                    </div>
+                                    <input type="range" class="points-slider" id="points-slider" min="0" max="0"
+                                        step="1" value="0" oninput="updatePointsPreview(this.value)" />
+                                    <div
+                                        style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--gray-400);">
+                                        <span>0 pts</span>
+                                        <span id="max-points-label">0 pts</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="card" style="margin-bottom:20px;">
+                            <div class="card-header"><span class="card-title">💳 Payment Method</span></div>
+                            <div class="card-body">
+                                <div class="method-grid">
+                                    <button class="method-btn selected" onclick="selectMethod('cash', this)">
+                                        <span class="method-icon">💵</span>Cash
+                                    </button>
+                                    <button class="method-btn" onclick="selectMethod('gcash', this)">
+                                        <span class="method-icon">📱</span>GCash
+                                    </button>
+                                    <button class="method-btn" onclick="selectMethod('maya', this)">
+                                        <span class="method-icon">🟣</span>Maya
+                                    </button>
+                                    <button class="method-btn" onclick="selectMethod('credit_card', this)">
+                                        <span class="method-icon">💳</span>Credit Card
+                                    </button>
+                                    <button class="method-btn" onclick="selectMethod('debit_card', this)">
+                                        <span class="method-icon">🏦</span>Debit Card
+                                    </button>
+                                </div>
+                                <input type="hidden" id="selected-method" value="cash" />
+
+                                <!-- Card details (shown for card methods) -->
+                                <div id="card-details" style="display:none;">
+                                    <div class="form-group">
+                                        <label class="form-label">Cardholder Name</label>
+                                        <input type="text" id="card-name" class="form-control"
+                                            placeholder="Name on card" />
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label class="form-label">Card Number</label>
+                                            <input type="text" id="card-number" class="form-control"
+                                                placeholder="•••• •••• •••• ••••" maxlength="19"
+                                                oninput="formatCardNumber(this)" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label class="form-label">Expiry</label>
+                                            <input type="text" id="card-expiry" class="form-control" placeholder="MM/YY"
+                                                maxlength="5" oninput="formatExpiry(this)" />
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="max-width:120px;">
+                                        <label class="form-label">CVV</label>
+                                        <input type="password" id="card-cvv" class="form-control" placeholder="•••"
+                                            maxlength="3" />
+                                    </div>
+                                </div>
+
+                                <!-- GCash/Maya reference -->
+                                <div id="ewallet-details" style="display:none;">
+                                    <div class="form-group">
+                                        <label class="form-label">Reference Number (optional)</label>
+                                        <input type="text" id="ewallet-ref" class="form-control"
+                                            placeholder="Enter transaction reference" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: Order Summary ─────────────────────── -->
+                    <div>
+                        <!-- Car Info -->
+                        <div class="card" style="margin-bottom:20px;">
+                            <div id="car-image-wrap"
+                                style="height:160px;background:var(--gray-100);overflow:hidden;border-radius:var(--radius) var(--radius) 0 0;display:flex;align-items:center;justify-content:center;font-size:3rem;">
+                                🚗
+                            </div>
+                            <div class="card-body">
+                                <div style="font-weight:700;font-size:1.05rem;" id="car-name-display">—</div>
+                                <div style="color:var(--gray-500);font-size:.82rem;margin:4px 0 12px;"
+                                    id="car-plate-display">—</div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem;">
+                                    <div style="background:var(--gray-50);border-radius:6px;padding:8px;">
+                                        <div style="color:var(--gray-400);font-size:.72rem;">PICKUP</div>
+                                        <div style="font-weight:600;" id="pickup-display">—</div>
+                                    </div>
+                                    <div style="background:var(--gray-50);border-radius:6px;padding:8px;">
+                                        <div style="color:var(--gray-400);font-size:.72rem;">RETURN</div>
+                                        <div style="font-weight:600;" id="return-display">—</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Amount Breakdown -->
+                        <div class="card" style="margin-bottom:20px;">
+                            <div class="card-header"><span class="card-title">Order Summary</span></div>
+                            <div class="card-body">
+                                <div class="amount-row">
+                                    <span>Daily Rate</span>
+                                    <span id="summary-rate">—</span>
+                                </div>
+                                <div class="amount-row">
+                                    <span>Duration</span>
+                                    <span id="summary-days">—</span>
+                                </div>
+                                <div class="amount-row">
+                                    <span>Subtotal</span>
+                                    <span id="summary-subtotal">—</span>
+                                </div>
+                                <div class="amount-row discount" id="discount-row" style="display:none;">
+                                    <span>⭐ Points Discount</span>
+                                    <span id="summary-discount">—</span>
+                                </div>
+                                <div class="amount-row"
+                                    style="margin-top:8px;padding-top:12px;border-top:2px solid var(--gray-200);border-bottom:none;">
+                                    <span>Total Due</span>
+                                    <span style="color:var(--primary);font-size:1.2rem;" id="summary-total">—</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pay Button -->
+                        <button id="pay-btn" class="btn btn-primary"
+                            style="width:100%;justify-content:center;padding:14px;font-size:1rem;"
+                            onclick="submitPayment()">
+                            🔒 Confirm & Pay <span id="btn-amount"></span>
+                        </button>
+                        <p style="text-align:center;font-size:.76rem;color:var(--gray-400);margin-top:8px;">
+                            Your payment is secure and encrypted
+                        </p>
+                    </div>
+
+                </div><!-- /pay-layout -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div class="success-overlay" id="successOverlay">
+        <div class="success-card">
+            <div class="success-icon">🎉</div>
+            <h2 style="margin-bottom:4px;">Payment Successful!</h2>
+            <p style="color:var(--gray-500);margin-bottom:20px;font-size:.9rem;">Your rental is now active.</p>
+
+            <div style="background:var(--gray-50);border-radius:10px;padding:16px;margin-bottom:20px;text-align:left;">
+                <div class="receipt-row"><span style="color:var(--gray-500);">Reference</span><strong
+                        id="r-ref">—</strong></div>
+                <div class="receipt-row"><span style="color:var(--gray-500);">Amount Paid</span><strong
+                        id="r-amount">—</strong></div>
+                <div class="receipt-row"><span style="color:var(--gray-500);">Points Used</span><span
+                        id="r-points-used">—</span></div>
+                <div class="receipt-row"><span style="color:var(--gray-500);">Points Earned</span><span
+                        id="r-points-earned" style="color:var(--success);">—</span></div>
+                <div class="receipt-row" style="border-bottom:none;"><span style="color:var(--gray-500);">Points
+                        Balance</span><strong id="r-points-bal" style="color:var(--primary);">—</strong></div>
+            </div>
+
+            <a href="customer-dashboard.html" class="btn btn-primary"
+                style="width:100%;justify-content:center;padding:12px;">
+                Go to Dashboard
+            </a>
+            <a href="my-rentals.html"
+                style="display:block;text-align:center;margin-top:10px;font-size:.85rem;color:var(--primary);">
+                View My Rentals
+            </a>
+        </div>
+    </div>
+
+    <script src="../js/api.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/sidebar.js"></script>
+    <script>
+        if (!requireAuth('user')) { }
+
+        let rental = null;
+        let userPoints = 0;
+        let pointsToUse = 0;
+        let selectedMethod = 'cash';
+
+        // ── Init ──────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', async () => {
+            renderCustomerSidebar();
+            const user = getUser();
+            if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+
+            const params = new URLSearchParams(window.location.search);
+            const rentalId = params.get('rental_id');
+
+            if (!rentalId) {
+                showToast('No rental ID provided.', 'error');
+                setTimeout(() => window.location.href = 'my-rentals.html', 1500);
+                return;
+            }
+
+            await loadRentalAndUser(rentalId);
+        });
+
+        async function loadRentalAndUser(rentalId) {
+            try {
+                // Load rental details + fresh user profile (for live points balance)
+                const [rentalRes, profileRes] = await Promise.all([
+                    rentalsAPI.getMyById(rentalId),
+                    authAPI.profile(),
+                ]);
+
+                // Check if already paid
+                if (rentalRes.existing_payment) {
+                    document.getElementById('loading-state').style.display = 'none';
+                    document.getElementById('already-paid-state').style.display = 'block';
+                    return;
+                }
+
+                // Check if rental is in a payable state
+                if (rentalRes.data.status !== 'approved') {
+                    showToast(`This booking is "${rentalRes.data.status}" and cannot be paid yet.`, 'error');
+                    setTimeout(() => window.location.href = 'my-rentals.html', 2000);
+                    return;
+                }
+
+                rental = rentalRes.data;
+                userPoints = profileRes.user.loyalty_points || 0;
+
+                // Update localStorage with fresh points
+                const stored = getUser();
+                if (stored) { stored.loyalty_points = userPoints; localStorage.setItem('rar_user', JSON.stringify(stored)); }
+
+                renderUI();
+
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('payment-layout').style.display = 'grid';
+            } catch (err) {
+                showToast(err.message || 'Failed to load booking details.', 'error');
+                setTimeout(() => window.location.href = 'my-rentals.html', 2000);
+            }
+        }
+
+        function renderUI() {
+            // Car info
+            const carImgWrap = document.getElementById('car-image-wrap');
+            if (rental.image_url) {
+                carImgWrap.innerHTML = `<img src="${rental.image_url}" alt="${rental.make}" style="width:100%;height:100%;object-fit:cover;">`;
+            }
+            document.getElementById('car-name-display').textContent = `${rental.make} ${rental.model} (${rental.year || ''})`;
+            document.getElementById('car-plate-display').textContent = rental.plate_number || '';
+            document.getElementById('pickup-display').textContent = formatDate(rental.pickup_date);
+            document.getElementById('return-display').textContent = formatDate(rental.return_date);
+
+            // Summary
+            document.getElementById('summary-rate').textContent = formatCurrency(rental.daily_rate) + '/day';
+            document.getElementById('summary-days').textContent = `${rental.total_days} day${rental.total_days > 1 ? 's' : ''}`;
+            document.getElementById('summary-subtotal').textContent = formatCurrency(rental.total_amount);
+            updateTotal();
+
+            // Loyalty points slider
+            document.getElementById('points-balance').textContent = userPoints;
+            if (userPoints <= 0) {
+                document.getElementById('points-section').style.display = 'none';
+                document.getElementById('no-points-msg').style.display = 'block';
+            } else {
+                // Max usable points = min(userPoints, total_amount - 1) — keep at least $1 payable
+                const maxUsable = Math.min(userPoints, Math.floor(rental.total_amount - 1));
+                const slider = document.getElementById('points-slider');
+                slider.max = maxUsable;
+                slider.value = 0;
+                document.getElementById('max-points-label').textContent = `${maxUsable} pts`;
+                document.getElementById('points-display').textContent = '0 pts = $0.00 off';
+            }
+        }
+
+        // ── Loyalty Points ────────────────────────────────────
+        function updatePointsPreview(val) {
+            pointsToUse = parseInt(val) || 0;
+            const discount = pointsToUse; // 1 pt = $1
+            document.getElementById('points-display').textContent =
+                `${pointsToUse} pts = ${formatCurrency(discount)} off`;
+            updateTotal();
+        }
+
+        function updateTotal() {
+            const base = +rental.total_amount;
+            const discount = pointsToUse;
+            let total = Math.max(1, base - discount);
+
+            document.getElementById('summary-total').textContent = formatCurrency(total);
+            document.getElementById('btn-amount').textContent = `— ${formatCurrency(total)}`;
+
+            const discountRow = document.getElementById('discount-row');
+            if (discount > 0) {
+                discountRow.style.display = 'flex';
+                document.getElementById('summary-discount').textContent = `- ${formatCurrency(discount)}`;
+            } else {
+                discountRow.style.display = 'none';
+            }
+        }
+
+        // ── Payment Method ────────────────────────────────────
+        function selectMethod(method, btn) {
+            selectedMethod = method;
+            document.getElementById('selected-method').value = method;
+            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            document.getElementById('card-details').style.display = ['credit_card', 'debit_card'].includes(method) ? 'block' : 'none';
+            document.getElementById('ewallet-details').style.display = ['gcash', 'maya'].includes(method) ? 'block' : 'none';
+        }
+
+        // ── Card number formatting ────────────────────────────
+        function formatCardNumber(input) {
+            let val = input.value.replace(/\D/g, '').substring(0, 16);
+            input.value = val.match(/.{1,4}/g)?.join(' ') || val;
+        }
+        function formatExpiry(input) {
+            let val = input.value.replace(/\D/g, '').substring(0, 4);
+            if (val.length >= 2) val = val.substring(0, 2) + '/' + val.substring(2);
+            input.value = val;
+        }
+
+        // ── Submit Payment ────────────────────────────────────
+        async function submitPayment() {
+            const btn = document.getElementById('pay-btn');
+            btn.textContent = '⏳ Processing…';
+            btn.disabled = true;
+
+            try {
+                const res = await paymentsAPI.create({
+                    rental_id: rental.id,
+                    method: selectedMethod,
+                    points_used: pointsToUse,
+                });
+
+                // Update localStorage with new points balance
+                const stored = getUser();
+                if (stored) {
+                    stored.loyalty_points = res.loyalty_points_balance;
+                    localStorage.setItem('rar_user', JSON.stringify(stored));
+                }
+
+                // Show success receipt
+                document.getElementById('r-ref').textContent = res.transaction_ref;
+                document.getElementById('r-amount').textContent = formatCurrency(res.amount_paid);
+                document.getElementById('r-points-used').textContent = res.points_used > 0 ? `${res.points_used} pts` : 'None';
+                document.getElementById('r-points-earned').textContent = `+${res.points_earned} pts`;
+                document.getElementById('r-points-bal').textContent = `${res.loyalty_points_balance} pts`;
+                document.getElementById('successOverlay').classList.add('show');
+
+            } catch (err) {
+                showToast(err.message || 'Payment failed. Please try again.', 'error');
+                btn.textContent = `🔒 Confirm & Pay`;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

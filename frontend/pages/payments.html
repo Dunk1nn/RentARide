@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payments – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+
+      <header class="top-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar()">☰</button>
+          <h1>Payments</h1>
+        </div>
+        <div class="header-right">
+          <div class="header-user">
+            <div class="avatar" id="avatar-initials">U</div>
+            <span id="user-name"></span>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-body">
+
+        <!-- ── Unpaid Bookings Section ────────────────────── -->
+        <!-- Only shows rentals that truly have NO paid payment -->
+        <div id="pending-rentals-section" style="margin-bottom:28px; display:none;">
+          <h3 style="margin-bottom:12px; font-size:1rem; font-weight:700;">
+            ⚠️ Unpaid Bookings
+          </h3>
+          <div id="pending-rentals-list" class="cars-grid"></div>
+        </div>
+
+        <!-- ── Payment History Table ──────────────────────── -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Payment History</span>
+            <span id="payment-count" style="font-size:.8rem;color:var(--gray-500);"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Vehicle</th>
+                  <th>Reference</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody">
+                <tr>
+                  <td colspan="6">
+                    <div class="spinner"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ── Pay Modal ──────────────────────────────────────── -->
+  <div class="modal-overlay" id="payModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Complete Payment</span>
+        <button class="modal-close" onclick="closePay()">✕</button>
+      </div>
+      <div id="pay-rental-info" style="background:var(--gray-50);border-radius:8px;padding:14px;margin-bottom:20px;">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select id="pay-method" class="form-control">
+          <option value="cash">Cash</option>
+          <option value="credit_card">Credit Card</option>
+          <option value="debit_card">Debit Card</option>
+          <option value="gcash">GCash</option>
+          <option value="maya">Maya</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;" id="payBtn"
+        onclick="submitPayment()">
+        Pay Now
+      </button>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (!requireAuth('user')) { }
+
+    let selectedRentalId = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderCustomerSidebar();
+      const user = getUser();
+      if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+
+      // Load both sections simultaneously
+      await Promise.all([loadPayments(), loadUnpaidRentals()]);
+    });
+
+    // ── Load payment history ──────────────────────────────
+    async function loadPayments() {
+      try {
+        const data = await paymentsAPI.getMy();
+        const tbody = document.getElementById('payments-tbody');
+
+        document.getElementById('payment-count').textContent =
+          data.data.length > 0 ? `${data.data.length} record${data.data.length > 1 ? 's' : ''}` : '';
+
+        if (data.data.length === 0) {
+          tbody.innerHTML = `
+          <tr><td colspan="6">
+            <div class="empty-state">
+              <div class="empty-icon">💳</div>
+              <p>No payment history yet</p>
+            </div>
+          </td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.data.map(p => `
+        <tr>
+          <td>${formatDate(p.created_at)}</td>
+          <td><strong>${p.make} ${p.model}</strong></td>
+          <td><code style="font-size:.78rem;">${p.transaction_ref || '—'}</code></td>
+          <td><strong>${formatCurrency(p.amount)}</strong></td>
+          <td style="text-transform:capitalize;">${p.method.replace('_', ' ')}</td>
+          <td>${statusBadge(p.status)}</td>
+        </tr>`).join('');
+      } catch (err) {
+        showToast('Failed to load payment history.', 'error');
+      }
+    }
+
+    // ── Load TRULY unpaid rentals ─────────────────────────
+    // Uses the new /api/payments/unpaid endpoint which checks
+    // the DB: approved rentals with NO paid payment record.
+    async function loadUnpaidRentals() {
+      try {
+        const data = await paymentsAPI.getUnpaid();
+        const unpaid = data.data;
+        const section = document.getElementById('pending-rentals-section');
+        const list = document.getElementById('pending-rentals-list');
+
+        if (unpaid.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+
+        section.style.display = 'block';
+        list.innerHTML = unpaid.map(r => `
+        <div class="car-card" id="rental-card-${r.id}">
+          <div class="car-img" style="height:80px;">
+            ${r.image_url
+            ? `<img src="${r.image_url}" alt="${r.make} ${r.model}" style="width:100%;height:100%;object-fit:cover;">`
+            : '🚗'}
+          </div>
+          <div class="car-info">
+            <div class="car-name">${r.make} ${r.model}</div>
+            <div class="car-meta">
+              <span>📅 ${formatDate(r.pickup_date)}</span>
+              <span>→ ${formatDate(r.return_date)}</span>
+            </div>
+            <div class="car-footer">
+              <div class="car-price">${formatCurrency(r.total_amount)}</div>
+              <button
+                class="btn btn-primary btn-sm"
+                id="pay-btn-${r.id}"
+                onclick="openPay(${r.id}, '${r.make} ${r.model}', ${r.total_amount})">
+                Pay Now
+              </button>
+            </div>
+          </div>
+        </div>`).join('');
+      } catch (err) {
+        // Silent — section just stays hidden
+      }
+    }
+
+    // ── Open pay modal ────────────────────────────────────
+    function openPay(rentalId, carName, amount) {
+      selectedRentalId = rentalId;
+      document.getElementById('pay-rental-info').innerHTML = `
+      <div style="font-weight:700; font-size:1rem;">${carName}</div>
+      <div style="color:var(--primary); font-size:1.3rem; font-weight:700; margin-top:6px;">
+        Total: ${formatCurrency(amount)}
+      </div>`;
+      document.getElementById('payModal').classList.add('open');
+    }
+
+    function closePay() {
+      document.getElementById('payModal').classList.remove('open');
+    }
+
+    // ── Submit payment ────────────────────────────────────
+    async function submitPayment() {
+      const btn = document.getElementById('payBtn');
+      btn.textContent = 'Processing…';
+      btn.disabled = true;
+
+      try {
+        const res = await paymentsAPI.create({
+          rental_id: selectedRentalId,
+          method: document.getElementById('pay-method').value,
+        });
+
+        closePay();
+
+        // ── Immediately remove the card from the unpaid list ──
+        const card = document.getElementById(`rental-card-${selectedRentalId}`);
+        if (card) {
+          card.style.transition = 'opacity .3s, transform .3s';
+          card.style.opacity = '0';
+          card.style.transform = 'scale(.95)';
+          setTimeout(() => {
+            card.remove();
+            // Hide the section if no more unpaid rentals
+            const list = document.getElementById('pending-rentals-list');
+            if (!list.querySelector('.car-card')) {
+              document.getElementById('pending-rentals-section').style.display = 'none';
+            }
+          }, 300);
+        }
+
+        showToast(
+          `✅ Payment successful! Ref: ${res.transaction_ref} · +${res.loyalty_points_earned} pts earned`,
+          'success'
+        );
+
+        // Refresh payment history table
+        await loadPayments();
+
+      } catch (err) {
+        // If already paid, hide the Pay button for that rental
+        if (err.message && err.message.toLowerCase().includes('already been paid')) {
+          const card = document.getElementById(`rental-card-${selectedRentalId}`);
+          if (card) {
+            const payBtn = card.querySelector('.btn-primary');
+            if (payBtn) {
+              payBtn.textContent = '✓ Paid';
+              payBtn.disabled = true;
+              payBtn.classList.replace('btn-primary', 'btn-outline');
+            }
+          }
+          showToast('This booking has already been paid.', 'info');
+          closePay();
+          await loadPayments();
+        } else {
+          showToast(err.message || 'Payment failed. Please try again.', 'error');
+        }
+      } finally {
+        btn.textContent = 'Pay Now';
+        btn.disabled = false;
+      }
+    }
+
+    // Close modal on overlay click
+    document.getElementById('payModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closePay();
+    });
+  </script>
+</body>
+
+</html>

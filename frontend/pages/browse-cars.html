@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Browse Cars – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar()">☰</button>
+          <h1>Browse Cars</h1>
+        </div>
+        <div class="header-right">
+          <div class="header-user">
+            <div class="avatar" id="avatar-initials">U</div>
+            <span id="user-name"></span>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-body">
+        <!-- Filters -->
+        <div class="filters-row">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search" class="form-control" placeholder="Search by make or model…"
+              oninput="filterCars()" />
+          </div>
+          <select id="category-filter" class="form-control" style="width:auto;" onchange="filterCars()">
+            <option value="">All Categories</option>
+            <option>Sedan</option>
+            <option>SUV</option>
+            <option>Luxury</option>
+            <option>Truck</option>
+            <option>Van</option>
+            <option>Electric</option>
+          </select>
+        </div>
+
+        <div id="cars-grid" class="cars-grid">
+          <div class="spinner"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Booking Modal -->
+  <div class="modal-overlay" id="bookingModal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-title">Book This Car</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div id="modal-car-info"
+        style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:14px;background:var(--gray-50);border-radius:8px;">
+      </div>
+      <form id="bookingForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Pickup Date & Time</label>
+            <input type="datetime-local" id="pickup_date" class="form-control" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Return Date & Time</label>
+            <input type="datetime-local" id="return_date" class="form-control" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Pickup Location</label>
+          <input type="text" id="pickup_location" class="form-control" value="Main Office" />
+        </div>
+        <div id="price-preview"
+          style="background:var(--primary-light);border-radius:8px;padding:14px;margin-bottom:16px;display:none;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+            <span>Duration</span><span id="preview-days">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-weight:700;color:var(--primary);">
+            <span>Estimated Total</span><span id="preview-total">—</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <textarea id="notes" class="form-control" rows="2" placeholder="Any special requests?"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;"
+          id="bookBtn">
+          Confirm Booking
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (!requireAuth('user')) { }
+    let allCars = [];
+    let selectedCarId = null;
+    let selectedCarRate = 0;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderCustomerSidebar();
+      const user = getUser();
+      if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+      await loadCars();
+    });
+
+    async function loadCars() {
+      try {
+        const data = await carsAPI.getAll('?status=available');
+        allCars = data.data;
+        renderCars(allCars);
+      } catch (err) {
+        document.getElementById('cars-grid').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load cars.</p></div>`;
+      }
+    }
+
+    function renderCars(cars) {
+      const grid = document.getElementById('cars-grid');
+      if (cars.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-icon">🚗</div><p>No cars available matching your search.</p></div>`;
+        return;
+      }
+      grid.innerHTML = cars.map(car => `
+      <div class="car-card">
+        <div class="car-img">
+  ${car.image_url
+          ? `<img src="${car.image_url}" alt="${car.make} ${car.model}" style="width:100%;height:100%;object-fit:cover;">`
+          : carEmoji(car.category)}
+        </div>
+        <div class="car-info">
+          <div class="car-name">${car.make} ${car.model} <span style="font-weight:400;color:var(--gray-400);">${car.year}</span></div>
+          <div class="car-meta">
+            <span>🪑 ${car.seats} seats</span>
+            <span>⚙️ ${car.transmission}</span>
+            <span>⛽ ${car.fuel_type}</span>
+          </div>
+          <div class="car-footer">
+            <div>
+              <div class="car-price">$${car.daily_rate}<span>/day</span></div>
+              ${statusBadge(car.status)}
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openBooking(${car.id}, '${car.make} ${car.model}', ${car.daily_rate}, '${car.category}')">
+              Book Now
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    }
+
+    function carEmoji(cat) {
+      const map = { Sedan: '🚗', SUV: '🚙', Luxury: '🏎️', Truck: '🚛', Van: '🚐', Electric: '⚡' };
+      return map[cat] || '🚗';
+    }
+
+    function filterCars() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const cat = document.getElementById('category-filter').value;
+      const filtered = allCars.filter(c => {
+        const matchSearch = !search || `${c.make} ${c.model}`.toLowerCase().includes(search);
+        const matchCat = !cat || c.category === cat;
+        return matchSearch && matchCat;
+      });
+      renderCars(filtered);
+    }
+
+    function openBooking(carId, carName, rate, category) {
+      selectedCarId = carId;
+      selectedCarRate = rate;
+      document.getElementById('modal-car-info').innerHTML = `
+      <span style="font-size:2.5rem;">${carEmoji(category)}</span>
+      <div>
+        <div style="font-weight:700;">${carName}</div>
+        <div style="color:var(--primary);font-weight:600;">$${rate}/day</div>
+      </div>`;
+      // Set min date to now
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const minDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      document.getElementById('pickup_date').min = minDate;
+      document.getElementById('return_date').min = minDate;
+      document.getElementById('bookingModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('bookingModal').classList.remove('open');
+      document.getElementById('bookingForm').reset();
+      document.getElementById('price-preview').style.display = 'none';
+    }
+
+    // Live price preview
+    ['pickup_date', 'return_date'].forEach(id => {
+      document.getElementById(id).addEventListener('change', updatePricePreview);
+    });
+
+    function updatePricePreview() {
+      const pickup = document.getElementById('pickup_date').value;
+      const ret = document.getElementById('return_date').value;
+      if (!pickup || !ret) return;
+      const days = Math.ceil((new Date(ret) - new Date(pickup)) / 86400000);
+      if (days < 1) return;
+      document.getElementById('preview-days').textContent = `${days} day${days > 1 ? 's' : ''}`;
+      document.getElementById('preview-total').textContent = formatCurrency(days * selectedCarRate);
+      document.getElementById('price-preview').style.display = 'block';
+    }
+
+    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('bookBtn');
+      btn.textContent = 'Booking…'; btn.disabled = true;
+
+      try {
+        const res = await rentalsAPI.create({
+          car_id: selectedCarId,
+          pickup_date: document.getElementById('pickup_date').value,
+          return_date: document.getElementById('return_date').value,
+          pickup_location: document.getElementById('pickup_location').value,
+          notes: document.getElementById('notes').value,
+        });
+        closeModal();
+        showToast(`Booking submitted! Total: ${formatCurrency(res.total_amount)}`, 'success');
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.textContent = 'Confirm Booking'; btn.disabled = false;
+      }
+    });
+
+    // Close on overlay click
+    document.getElementById('bookingModal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payments – Rent A Ride Admin</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <div class="main-content">
+    <header class="top-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1>Payment Management</h1>
+      </div>
+      <div class="header-right">
+        <div class="header-user">
+          <div class="avatar" style="background:#FEF3C7;color:#D97706;" id="avatar-initials">A</div>
+          <span id="user-name"></span>
+        </div>
+      </div>
+    </header>
+    <main class="page-body">
+      <!-- Summary Cards -->
+      <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:24px;">
+        <div class="stat-card">
+          <div class="stat-icon green">💰</div>
+          <div><div class="stat-label">Total Collected</div><div class="stat-value" id="total-paid">—</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon orange">⏳</div>
+          <div><div class="stat-label">Pending</div><div class="stat-value" id="total-pending">—</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue">📄</div>
+          <div><div class="stat-label">Transactions</div><div class="stat-value" id="total-txn">—</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Ref</th><th>Customer</th><th>Vehicle</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr>
+            </thead>
+            <tbody id="payments-tbody">
+              <tr><td colspan="7"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  if (!requireAuth('admin')) {}
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderAdminSidebar();
+    const user = getUser();
+    if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+
+    try {
+      const data = await paymentsAPI.getAll();
+      const payments = data.data;
+
+      const paid    = payments.filter(p=>p.status==='paid').reduce((s,p)=>s+ +p.amount,0);
+      const pending = payments.filter(p=>p.status==='pending').reduce((s,p)=>s+ +p.amount,0);
+      document.getElementById('total-paid').textContent    = formatCurrency(paid);
+      document.getElementById('total-pending').textContent = formatCurrency(pending);
+      document.getElementById('total-txn').textContent     = payments.length;
+
+      const tbody = document.getElementById('payments-tbody');
+      if (payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">💳</div><p>No payments yet</p></div></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = payments.map(p => `
+        <tr>
+          <td><code>${p.transaction_ref || '—'}</code></td>
+          <td>${p.customer_name}</td>
+          <td>${p.make} ${p.model}</td>
+          <td><strong>${formatCurrency(p.amount)}</strong></td>
+          <td>${p.method}</td>
+          <td>${statusBadge(p.status)}</td>
+          <td>${formatDate(p.created_at)}</td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      showToast('Failed to load payments.', 'error');
+    }
+  });
+</script>
+</body>
+</html>

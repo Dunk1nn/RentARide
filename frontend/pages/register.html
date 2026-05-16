@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-text">🚗 Rent A Ride</div>
+      <div class="logo-sub">Your journey starts here</div>
+    </div>
+
+    <h2 class="auth-title">Create an account</h2>
+    <p class="auth-sub">Start renting cars today</p>
+
+    <form id="registerForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="name" class="form-control" placeholder="Leslie Alexander" required />
+          <div class="form-error" id="name-error"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone Number</label>
+          <input type="tel" id="phone" class="form-control" placeholder="+63 912 345 6789" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="email" class="form-control" placeholder="you@example.com" required />
+        <div class="form-error" id="email-error"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Min. 6 characters" required />
+        <div class="form-error" id="pass-error"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input type="password" id="confirm" class="form-control" placeholder="Repeat password" required />
+        <div class="form-error" id="confirm-error"></div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;" id="regBtn">
+        Create Account
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="login.html">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script>
+  document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name     = document.getElementById('name').value.trim();
+    const phone    = document.getElementById('phone').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm  = document.getElementById('confirm').value;
+    const btn      = document.getElementById('regBtn');
+
+    let valid = true;
+    if (!name)   { showErr('name-error', 'Name is required.'); valid = false; } else clearErr('name-error');
+    if (!email)  { showErr('email-error', 'Email is required.'); valid = false; } else clearErr('email-error');
+    if (password.length < 6) { showErr('pass-error', 'Password must be at least 6 characters.'); valid = false; } else clearErr('pass-error');
+    if (password !== confirm) { showErr('confirm-error', 'Passwords do not match.'); valid = false; } else clearErr('confirm-error');
+    if (!valid) return;
+
+    btn.textContent = 'Creating account…';
+    btn.disabled = true;
+
+    try {
+      const data = await authAPI.register({ name, email, password, phone });
+      saveAuth(data.token, data.user);
+      showToast('Account created! Welcome to Rent A Ride 🚗', 'success');
+      setTimeout(() => window.location.href = 'customer-dashboard.html', 900);
+    } catch (err) {
+      showToast(err.message, 'error');
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+    }
+  });
+
+  function showErr(id, msg) { const el=document.getElementById(id); el.textContent=msg; el.classList.add('show'); }
+  function clearErr(id) { document.getElementById(id).classList.remove('show'); }
+</script>
+</body>
+</html>

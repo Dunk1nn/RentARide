@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Rentals – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="app-layout">
+  <div id="sidebar-container"></div>
+  <div class="main-content">
+    <header class="top-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="toggleSidebar()">☰</button>
+        <h1>Manage Rentals</h1>
+      </div>
+      <div class="header-right">
+        <div class="header-user">
+          <div class="avatar" style="background:#FEF3C7;color:#D97706;" id="avatar-initials">A</div>
+          <span id="user-name"></span>
+        </div>
+      </div>
+    </header>
+    <main class="page-body">
+      <!-- Filters -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+        <button class="btn btn-primary btn-sm" onclick="filterStatus('all', this)">All</button>
+        <button class="btn btn-outline btn-sm" onclick="filterStatus('pending', this)">⏳ Pending</button>
+        <button class="btn btn-outline btn-sm" onclick="filterStatus('approved', this)">✅ Approved</button>
+        <button class="btn btn-outline btn-sm" onclick="filterStatus('ongoing', this)">🔑 Ongoing</button>
+        <button class="btn btn-outline btn-sm" onclick="filterStatus('completed', this)">🏁 Completed</button>
+        <button class="btn btn-outline btn-sm" onclick="filterStatus('rejected', this)">✕ Rejected</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Customer</th><th>Vehicle</th><th>Pickup</th><th>Return</th><th>Total</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="rentals-tbody">
+              <tr><td colspan="8"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/sidebar.js"></script>
+<script>
+  if (!requireAuth('admin')) {}
+  let allRentals = [];
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderAdminSidebar();
+    const user = getUser();
+    if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+    await loadRentals();
+  });
+
+  async function loadRentals() {
+    try {
+      const data = await rentalsAPI.getAll();
+      allRentals = data.data;
+      renderTable(allRentals);
+    } catch (err) {
+      showToast('Failed to load rentals.', 'error');
+    }
+  }
+
+  function renderTable(rentals) {
+    const tbody = document.getElementById('rentals-tbody');
+    if (rentals.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><p>No rentals found</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rentals.map(r => {
+      let actions = '—';
+      if (r.status === 'pending') {
+        actions = `
+          <button class="btn btn-sm btn-primary" onclick="setStatus(${r.id},'approved')">✓ Approve</button>
+          <button class="btn btn-sm btn-danger" style="margin-left:4px;" onclick="setStatus(${r.id},'rejected')">✕ Reject</button>`;
+      } else if (r.status === 'approved') {
+        actions = `<button class="btn btn-sm btn-outline" onclick="setStatus(${r.id},'ongoing')">▶ Start</button>`;
+      } else if (r.status === 'ongoing') {
+        actions = `<button class="btn btn-sm btn-outline" onclick="setStatus(${r.id},'completed')">🏁 Complete</button>`;
+      }
+      return `
+        <tr>
+          <td>#${r.id}</td>
+          <td><strong>${r.customer_name}</strong><br><small style="color:var(--gray-400)">${r.customer_email}</small></td>
+          <td>${r.make} ${r.model}<br><code style="font-size:.75rem">${r.plate_number}</code></td>
+          <td>${formatDate(r.pickup_date)}</td>
+          <td>${formatDate(r.return_date)}</td>
+          <td>${formatCurrency(r.total_amount)}</td>
+          <td>${statusBadge(r.status)}</td>
+          <td>${actions}</td>
+        </tr>`;
+    }).join('');
+  }
+
+  function filterStatus(status, btn) {
+    document.querySelectorAll('.page-body > div button.btn').forEach(b => b.classList.replace('btn-primary','btn-outline'));
+    btn.classList.replace('btn-outline','btn-primary');
+    renderTable(status === 'all' ? allRentals : allRentals.filter(r => r.status === status));
+  }
+
+  async function setStatus(id, status) {
+    const msg = { approved:'Approve', rejected:'Reject', ongoing:'Start', completed:'Complete' };
+    if (!confirmAction(`${msg[status]} this rental?`)) return;
+    try {
+      await rentalsAPI.updateStatus(id, status);
+      showToast(`Rental ${status}!`, 'success');
+      await loadRentals();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+</script>
+</body>
+</html>

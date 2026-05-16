@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Cars – Rent A Ride</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* ── Image upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--gray-300);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .upload-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .upload-zone .upload-icon {
+      font-size: 2rem;
+      margin-bottom: 6px;
+    }
+
+    .upload-zone p {
+      font-size: .85rem;
+      color: var(--gray-500);
+      margin: 0;
+    }
+
+    .upload-zone strong {
+      color: var(--primary);
+    }
+
+    /* ── Image preview ── */
+    .img-preview-wrap {
+      position: relative;
+      display: none;
+      margin-top: 10px;
+    }
+
+    .img-preview-wrap img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--gray-200);
+    }
+
+    .img-preview-wrap .remove-img {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, .55);
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      font-size: .85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Car photo thumbnail in table ── */
+    .car-thumb {
+      width: 56px;
+      height: 42px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--gray-200);
+      background: var(--gray-100);
+    }
+
+    .car-thumb-placeholder {
+      width: 56px;
+      height: 42px;
+      border-radius: 6px;
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-layout">
+    <div id="sidebar-container"></div>
+    <div class="main-content">
+      <header class="top-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="hamburger" onclick="toggleSidebar()">☰</button>
+          <h1>Manage Cars</h1>
+        </div>
+        <div class="header-right">
+          <div class="header-user">
+            <div class="avatar" style="background:#FEF3C7;color:#D97706;" id="avatar-initials">A</div>
+            <span id="user-name"></span>
+          </div>
+        </div>
+      </header>
+
+      <main class="page-body">
+        <div class="page-header">
+          <h2>All Vehicles</h2>
+          <button class="btn btn-primary" onclick="openCarModal()">+ Add Car</button>
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Photo</th>
+                  <th>Vehicle</th>
+                  <th>Category</th>
+                  <th>Plate</th>
+                  <th>Daily Rate</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="cars-tbody">
+                <tr>
+                  <td colspan="7">
+                    <div class="spinner"></div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add / Edit Car Modal -->
+  <div class="modal-overlay" id="carModal">
+    <div class="modal" style="max-width:620px;">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Add New Car</span>
+        <button class="modal-close" onclick="closeCarModal()">✕</button>
+      </div>
+
+      <form id="carForm">
+        <input type="hidden" id="car-id" />
+
+        <!-- Image Upload -->
+        <div class="form-group">
+          <label class="form-label">Car Photo</label>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="car-image" accept="image/jpeg,image/jpg,image/png,image/webp"
+              onchange="handleImageSelect(this)" />
+            <div class="upload-icon">📷</div>
+            <p><strong>Click to upload</strong> or drag & drop here</p>
+            <p>JPG, PNG, WEBP — max 5MB</p>
+          </div>
+          <!-- Preview after selecting -->
+          <div class="img-preview-wrap" id="previewWrap">
+            <img id="img-preview" src="" alt="Preview" />
+            <button type="button" class="remove-img" onclick="removeImage()" title="Remove photo">✕</button>
+          </div>
+          <!-- Current image (edit mode) -->
+          <div id="current-img-wrap" style="display:none;margin-top:10px;">
+            <p style="font-size:.8rem;color:var(--gray-500);margin-bottom:4px;">Current photo:</p>
+            <img id="current-img" src="" alt="Current"
+              style="height:80px;border-radius:6px;object-fit:cover;border:1px solid var(--gray-200);" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Make *</label>
+            <input type="text" id="make" class="form-control" placeholder="Toyota" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Model *</label>
+            <input type="text" id="model" class="form-control" placeholder="Camry" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Year *</label>
+            <input type="number" id="year" class="form-control" placeholder="2023" min="2000" max="2030" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="category" class="form-control">
+              <option>Sedan</option>
+              <option>SUV</option>
+              <option>Luxury</option>
+              <option>Truck</option>
+              <option>Van</option>
+              <option>Electric</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Plate Number *</label>
+            <input type="text" id="plate_number" class="form-control" placeholder="ABC-1234" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Daily Rate ($) *</label>
+            <input type="number" id="daily_rate" class="form-control" placeholder="80" min="1" step="0.01" required />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Seats</label>
+            <input type="number" id="seats" class="form-control" value="5" min="2" max="15" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <input type="text" id="color" class="form-control" placeholder="White" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Transmission</label>
+            <select id="transmission" class="form-control">
+              <option>Automatic</option>
+              <option>Manual</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fuel Type</label>
+            <select id="fuel_type" class="form-control">
+              <option>Gasoline</option>
+              <option>Diesel</option>
+              <option>Electric</option>
+              <option>Hybrid</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="status-group" style="display:none;">
+          <label class="form-label">Status</label>
+          <select id="car-status" class="form-control">
+            <option>available</option>
+            <option>maintenance</option>
+            <option>retired</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="description" class="form-control" rows="2"
+            placeholder="Optional notes about the car"></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:12px;"
+          id="saveCarBtn">
+          Save Car
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/sidebar.js"></script>
+  <script>
+    if (!requireAuth('admin')) { }
+    let editingCarId = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderAdminSidebar();
+      const user = getUser();
+      if (user) document.getElementById('avatar-initials').textContent = user.name.charAt(0).toUpperCase();
+
+      // Drag-and-drop support
+      const zone = document.getElementById('uploadZone');
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) showPreview(file);
+      });
+
+      await loadCars();
+    });
+
+    // ── Image helpers ──────────────────────────────────────
+    function handleImageSelect(input) {
+      if (input.files && input.files[0]) showPreview(input.files[0]);
+    }
+
+    function showPreview(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        document.getElementById('img-preview').src = e.target.result;
+        document.getElementById('previewWrap').style.display = 'block';
+        document.getElementById('uploadZone').style.display = 'none';
+        // Hide current image when new one selected
+        document.getElementById('current-img-wrap').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+      // Set the file on the actual input
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      document.getElementById('car-image').files = dt.files;
+    }
+
+    function removeImage() {
+      document.getElementById('car-image').value = '';
+      document.getElementById('img-preview').src = '';
+      document.getElementById('previewWrap').style.display = 'none';
+      document.getElementById('uploadZone').style.display = 'block';
+      // Restore current image in edit mode
+      const cur = document.getElementById('current-img').src;
+      if (cur && editingCarId) document.getElementById('current-img-wrap').style.display = 'block';
+    }
+
+    // ── Load cars table ────────────────────────────────────
+    async function loadCars() {
+      try {
+        const data = await carsAPI.getAll();
+        const tbody = document.getElementById('cars-tbody');
+
+        if (data.data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7">
+          <div class="empty-state"><div class="empty-icon">🚗</div><p>No cars yet. Add one!</p></div>
+        </td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.data.map(c => `
+        <tr>
+          <td>
+            ${c.image_url
+            ? `<img class="car-thumb" src="${c.image_url}" alt="${c.make} ${c.model}" onerror="this.style.display='none'" />`
+            : `<div class="car-thumb-placeholder">${carEmoji(c.category)}</div>`}
+          </td>
+          <td>
+            <strong>${c.make} ${c.model}</strong>
+            <br><small style="color:var(--gray-400)">${c.year} · ${c.color || 'N/A'}</small>
+          </td>
+          <td>${c.category}</td>
+          <td><code>${c.plate_number}</code></td>
+          <td><strong>$${c.daily_rate}</strong>/day</td>
+          <td>${statusBadge(c.status)}</td>
+          <td>
+            <button class="btn btn-sm btn-outline" onclick='editCar(${JSON.stringify(c).replace(/'/g, "&#39;")})'>
+              ✏️ Edit
+            </button>
+            <button class="btn btn-sm btn-danger" style="margin-left:4px;" onclick="deleteCar(${c.id})">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      `).join('');
+      } catch (err) {
+        showToast('Failed to load cars.', 'error');
+      }
+    }
+
+    function carEmoji(cat) {
+      const map = { Sedan: '🚗', SUV: '🚙', Luxury: '🏎️', Truck: '🚛', Van: '🚐', Electric: '⚡' };
+      return map[cat] || '🚗';
+    }
+
+    // ── Modal open/close ───────────────────────────────────
+    function openCarModal() {
+      editingCarId = null;
+      document.getElementById('modal-title').textContent = 'Add New Car';
+      document.getElementById('carForm').reset();
+      document.getElementById('status-group').style.display = 'none';
+      document.getElementById('previewWrap').style.display = 'none';
+      document.getElementById('uploadZone').style.display = 'block';
+      document.getElementById('current-img-wrap').style.display = 'none';
+      document.getElementById('carModal').classList.add('open');
+    }
+
+    function editCar(car) {
+      editingCarId = car.id;
+      document.getElementById('modal-title').textContent = 'Edit Car';
+      document.getElementById('make').value = car.make;
+      document.getElementById('model').value = car.model;
+      document.getElementById('year').value = car.year;
+      document.getElementById('category').value = car.category;
+      document.getElementById('plate_number').value = car.plate_number;
+      document.getElementById('daily_rate').value = car.daily_rate;
+      document.getElementById('seats').value = car.seats;
+      document.getElementById('color').value = car.color || '';
+      document.getElementById('transmission').value = car.transmission;
+      document.getElementById('fuel_type').value = car.fuel_type;
+      document.getElementById('description').value = car.description || '';
+      document.getElementById('car-status').value = car.status;
+      document.getElementById('status-group').style.display = 'block';
+
+      // Show current image if available
+      document.getElementById('previewWrap').style.display = 'none';
+      document.getElementById('uploadZone').style.display = 'block';
+      document.getElementById('car-image').value = '';
+      if (car.image_url) {
+        document.getElementById('current-img').src = car.image_url;
+        document.getElementById('current-img-wrap').style.display = 'block';
+      } else {
+        document.getElementById('current-img-wrap').style.display = 'none';
+      }
+
+      document.getElementById('carModal').classList.add('open');
+    }
+
+    function closeCarModal() {
+      document.getElementById('carModal').classList.remove('open');
+    }
+
+    // ── Form submit — uses FormData for file upload ─────────
+    document.getElementById('carForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('saveCarBtn');
+      btn.textContent = 'Saving…'; btn.disabled = true;
+
+      // Build FormData (supports both text fields and file)
+      const fd = new FormData();
+      fd.append('make', document.getElementById('make').value);
+      fd.append('model', document.getElementById('model').value);
+      fd.append('year', document.getElementById('year').value);
+      fd.append('category', document.getElementById('category').value);
+      fd.append('plate_number', document.getElementById('plate_number').value);
+      fd.append('daily_rate', document.getElementById('daily_rate').value);
+      fd.append('seats', document.getElementById('seats').value);
+      fd.append('color', document.getElementById('color').value);
+      fd.append('transmission', document.getElementById('transmission').value);
+      fd.append('fuel_type', document.getElementById('fuel_type').value);
+      fd.append('description', document.getElementById('description').value);
+      fd.append('status', document.getElementById('car-status').value || 'available');
+
+      const imageFile = document.getElementById('car-image').files[0];
+      if (imageFile) fd.append('image', imageFile);
+
+      try {
+        if (editingCarId) {
+          await carsAPI.update(editingCarId, fd);
+          showToast('Car updated!', 'success');
+        } else {
+          await carsAPI.create(fd);
+          showToast('Car added!', 'success');
+        }
+        closeCarModal();
+        await loadCars();
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        btn.textContent = 'Save Car'; btn.disabled = false;
+      }
+    });
+
+    async function deleteCar(id) {
+      if (!confirmAction('Delete this car permanently?')) return;
+      try {
+        await carsAPI.delete(id);
+        showToast('Car deleted.', 'success');
+        await loadCars();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    document.getElementById('carModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeCarModal();
+    });
+  </script>
+</body>
+
+</html>
