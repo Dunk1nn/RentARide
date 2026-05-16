@@ -33,7 +33,7 @@ function showToast(message, type = 'success') {
  * Format a number as currency (USD).
  */
 function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(amount);
 }
 
 /**

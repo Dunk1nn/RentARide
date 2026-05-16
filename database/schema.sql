@@ -126,9 +126,9 @@ INSERT INTO admins (name, email, password, role) VALUES
 -- Seed: Sample Cars
 -- --------------------------------------------------------
 INSERT INTO cars (make, model, year, category, color, plate_number, daily_rate, seats, transmission, fuel_type, image_url) VALUES
-('Toyota', 'Camry', 2023, 'Sedan', 'White', 'ABC-1234', 80.00, 5, 'Automatic', 'Gasoline', NULL),
-('Honda', 'CR-V', 2023, 'SUV', 'Silver', 'DEF-5678', 90.00, 5, 'Automatic', 'Gasoline', NULL),
-('BMW', 'X3', 2022, 'SUV', 'Black', 'GHI-9012', 136.00, 5, 'Automatic', 'Gasoline', NULL),
-('Honda', 'Civic', 2023, 'Sedan', 'Blue', 'JKL-3456', 70.00, 5, 'Automatic', 'Gasoline', NULL),
-('Toyota', 'Fortuner', 2022, 'SUV', 'Gray', 'MNO-7890', 120.00, 7, 'Automatic', 'Diesel', NULL),
-('Ford', 'Mustang', 2023, 'Luxury', 'Red', 'PQR-1234', 150.00, 4, 'Automatic', 'Gasoline', NULL);
+('Toyota', 'Camry', 2023, 'Sedan', 'White', 'ABC-1234', 4000.00, 5, 'Automatic', 'Gasoline', NULL),
+('Honda', 'CR-V', 2023, 'SUV', 'Silver', 'DEF-5678', 4500.00, 5, 'Automatic', 'Gasoline', NULL),
+('BMW', 'X3', 2022, 'SUV', 'Black', 'GHI-9012', 8500.00, 5, 'Automatic', 'Gasoline', NULL),
+('Honda', 'Civic', 2023, 'Sedan', 'Blue', 'JKL-3456', 3500.00, 5, 'Automatic', 'Gasoline', NULL),
+('Toyota', 'Fortuner', 2022, 'SUV', 'Gray', 'MNO-7890', 4500.00, 7, 'Automatic', 'Diesel', NULL),
+('Ford', 'Mustang', 2023, 'Luxury', 'Red', 'PQR-1234', 12000.00, 4, 'Automatic', 'Gasoline', NULL);

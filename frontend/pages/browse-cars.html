@@ -145,7 +145,7 @@
           </div>
           <div class="car-footer">
             <div>
-              <div class="car-price">$${car.daily_rate}<span>/day</span></div>
+              <div class="car-price">₱${car.daily_rate}<span>/day</span></div>
               ${statusBadge(car.status)}
             </div>
             <button class="btn btn-primary btn-sm" onclick="openBooking(${car.id}, '${car.make} ${car.model}', ${car.daily_rate}, '${car.category}')">
@@ -180,7 +180,7 @@
       <span style="font-size:2.5rem;">${carEmoji(category)}</span>
       <div>
         <div style="font-weight:700;">${carName}</div>
-        <div style="color:var(--primary);font-weight:600;">$${rate}/day</div>
+        <div style="color:var(--primary);font-weight:600;">₱${rate}/day</div>
       </div>`;
       // Set min date to now
       const now = new Date();
