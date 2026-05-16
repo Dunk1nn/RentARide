@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚗 Rent A Ride — Car Rental Management System
 
 A full-stack car rental web application with separate Customer and Admin dashboards.
@@ -182,3 +183,6 @@ For example:
 - **Primary color:** `#1E6FF1` (Blue)
 - **Font:** Outfit (Google Fonts)
 - **Style:** Clean, minimal, professional
+=======
+# RentARide
+>>>>>>> f95d0156b0581b034201d2385adf78d51d11da3c
