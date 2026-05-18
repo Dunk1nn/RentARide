@@ -2,9 +2,10 @@
 const db = require('../config/db');
 
 // ── Loyalty Points Config ─────────────────────────────────
-const POINTS_EARN_RATE = 1;     // 1 point earned per $1 paid
-const POINTS_REDEEM_RATE = 1;     // 1 point = $1 discount
-const MIN_PAYMENT_AMOUNT = 100.00;  // Customer must pay at least $1
+const POINTS_EARN_RATE = 50;       // 50 points earned per 1000 pesos paid
+const POINTS_EARN_UNIT = 1000;     // Earn points for every 1000 pesos
+const POINTS_REDEEM_RATE = 1;      // 1 point = 1 peso discount
+const MIN_PAYMENT_AMOUNT = 1000.00;  // Customer must pay at least 1000 pesos
 
 // ── Create Payment (with loyalty points support) ──────────
 const createPayment = async (req, res) => {
@@ -71,7 +72,7 @@ const createPayment = async (req, res) => {
     await db.query('UPDATE rentals SET status = "ongoing" WHERE id = ?', [rental_id]);
 
     // 7. Deduct used points, add earned points (based on final amount paid)
-    const pointsEarned = Math.floor(finalAmount * POINTS_EARN_RATE);
+    const pointsEarned = Math.floor(finalAmount / POINTS_EARN_UNIT) * POINTS_EARN_RATE;
     const netPoints = pointsEarned - pointsToUse;
     await db.query(
       'UPDATE users SET loyalty_points = loyalty_points + ? WHERE id = ?',
@@ -152,8 +153,21 @@ const getAllPayments = async (req, res) => {
        JOIN cars c ON r.car_id = c.id
        ORDER BY p.created_at DESC`
     );
-    res.json({ success: true, data: payments });
+
+    // Calculate pending amount from approved rentals that have no paid payment record
+    const [[{ pending_total }]] = await db.query(
+      `SELECT COALESCE(SUM(r.total_amount), 0) AS pending_total
+       FROM rentals r
+       WHERE r.status = 'approved'
+         AND NOT EXISTS (
+           SELECT 1 FROM payments p 
+           WHERE p.rental_id = r.id AND p.status = 'paid'
+         )`
+    );
+
+    res.json({ success: true, data: payments, pending_total });
   } catch (err) {
+    console.error('GetAllPayments error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 };

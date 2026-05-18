@@ -114,13 +114,13 @@ const loginAdmin = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
-    const token = generateToken({ id: admin.id, email: admin.email, role: 'admin' });
+    const token = generateToken({ id: admin.id, email: admin.email, role: admin.role });
 
     res.json({
       success: true,
       message: 'Admin login successful!',
       token,
-      user: { id: admin.id, name: admin.name, email: admin.email, role: 'admin' },
+      user: { id: admin.id, name: admin.name, email: admin.email, role: admin.role },
     });
   } catch (err) {
     console.error('Admin login error:', err);
@@ -132,7 +132,7 @@ const loginAdmin = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const { id, role } = req.user;
-    const table = role === 'admin' ? 'admins' : 'users';
+    const table = (role === 'admin' || role === 'superadmin') ? 'admins' : 'users';
     const [rows] = await db.query(`SELECT id, name, email, phone, created_at FROM ${table} WHERE id = ?`, [id]);
 
     if (rows.length === 0) {

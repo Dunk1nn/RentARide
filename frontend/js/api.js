@@ -69,6 +69,7 @@ const adminAPI = {
   deleteUser: (id) => apiFetch(`/admin/users/${id}`, { method: 'DELETE' }),
   getAdmins: () => apiFetch('/admin/admins'),
   createAdmin: (body) => apiFetch('/admin/admins', { method: 'POST', body: JSON.stringify(body) }),
+  deleteAdmin: (id) => apiFetch(`/admin/admins/${id}`, { method: 'DELETE' }),
   getTickets: () => apiFetch('/admin/tickets'),
   replyTicket: (id, body) => apiFetch(`/admin/tickets/${id}/reply`, { method: 'PUT', body: JSON.stringify(body) }),
 };

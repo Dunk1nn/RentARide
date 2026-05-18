@@ -75,7 +75,7 @@ function requireAuth(role = 'user') {
     window.location.href = role === 'admin' ? '../pages/admin-login.html' : '../pages/login.html';
     return false;
   }
-  if (role === 'admin' && user.role !== 'admin') {
+  if (role === 'admin' && user.role !== 'admin' && user.role !== 'superadmin') {
     window.location.href = '../pages/login.html';
     return false;
   }

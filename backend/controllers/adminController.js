@@ -67,6 +67,10 @@ const deleteUser = async (req, res) => {
 // ── Create Admin Account ──────────────────────────────────
 const createAdmin = async (req, res) => {
   try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Access denied. Only Super Admin can create admin accounts.' });
+    }
+
     const { name, email, password, role } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, password required.' });
@@ -81,6 +85,31 @@ const createAdmin = async (req, res) => {
     if (err.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ success: false, message: 'Email already exists.' });
     }
+    res.status(500).json({ success: false, message: 'Server error.' });
+  }
+};
+
+// ── Delete Admin Account (Super Admin only) ────────────────
+const deleteAdmin = async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') {
+      return res.status(403).json({ success: false, message: 'Access denied. Only Super Admin can delete admin accounts.' });
+    }
+
+    const adminId = req.params.id;
+    // Check if trying to delete self
+    if (parseInt(adminId) === req.user.id) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own account.' });
+    }
+
+    const [result] = await db.query('DELETE FROM admins WHERE id = ?', [adminId]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Admin account not found.' });
+    }
+
+    res.json({ success: true, message: 'Admin account deleted successfully.' });
+  } catch (err) {
+    console.error('Delete admin error:', err);
     res.status(500).json({ success: false, message: 'Server error.' });
   }
 };
@@ -123,4 +152,4 @@ const replyTicket = async (req, res) => {
   }
 };
 
-module.exports = { getDashboardStats, getAllUsers, updateUserStatus, deleteUser, createAdmin, getAllAdmins, getAllTickets, replyTicket };
+module.exports = { getDashboardStats, getAllUsers, updateUserStatus, deleteUser, createAdmin, deleteAdmin, getAllAdmins, getAllTickets, replyTicket };

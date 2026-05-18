@@ -49,6 +49,9 @@ function renderCustomerSidebar() {
  * Renders the admin sidebar into #sidebar-container.
  */
 function renderAdminSidebar() {
+  const user = getUser();
+  const isSuperAdmin = user && user.role === 'superadmin';
+
   const html = `
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">🛡️ Admin <span>Panel</span></div>
@@ -70,9 +73,11 @@ function renderAdminSidebar() {
       <a href="admin-customers.html" class="sidebar-link">
         <span class="icon">👥</span> Customers
       </a>
+      ${isSuperAdmin ? `
       <a href="admin-admins.html" class="sidebar-link">
         <span class="icon">🛡️</span> Admin Accounts
       </a>
+      ` : ''}
       <a href="admin-support.html" class="sidebar-link">
         <span class="icon">💬</span> Support Tickets
       </a>
